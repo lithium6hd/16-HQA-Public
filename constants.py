@@ -17,23 +17,6 @@ def load_constants():
     const_dict['a0'] = list(physical_constants['Bohr radius'][:2]) + ['Bohr radius']
     const_dict['uB'] = list(physical_constants['Bohr magneton'][:2]) + ['Bohr magneton']
 
-    # Lithium
-    const_dict['m_6Li'] = [6.0151214 * const_dict['u0'][0], 'kg', 'mass of 6Li {Properties of 6Li}']
-    const_dict['I_6Li'] = [1, '1', 'nuclear spin of 6Li {Properties of 6Li}']
-    const_dict['gI_6Li'] = [-0.0004476540, '1', 'nuclear g-factor {Properties of 6Li}']
-    const_dict['A_S12_6Li'] = [h * 152.1368407 * mega, 'J',
-                               'magnetic dipole constant of the 2 2S_1/2 state of 6Li {Properties of 6Li}']
-    const_dict['A_P12_6Li'] = [h * 17.386 * mega, '1/s',
-                               'magnetic dipole constant of the 2 2P_1/2 state of 6Li {Properties of 6Li}']
-    const_dict['A_P32_6Li'] = [h * (-1.155) * mega, '1/s',
-                               'magnetic dipole constant of the 6 2P_3/2 state of 6Li {Properties of 6Li}']
-    const_dict['gJ_S12_6Li'] = [2.0023010, '1',
-                                'fine structure Lande g-factor of the 6 2S_1/2 state of 6Li {Properties of 6Li}']
-    const_dict['gJ_P12_6Li'] = [0.6668, '1',
-                                'fine structure Lande g-factor of the 6 2P_1/2 state of 6Li {Properties of 6Li}']
-    const_dict['gJ_P32_6Li'] = [1.335, '1',
-                                'fine structure Lande g-factor of the 6 2P_3/2 state of 6Li {Properties of 6Li}']
-
     # 6Li D1 transition (2 2S_1/2 -> 2 2P_1/2)
     const_dict['omegaD1_6Li'] = [2 * pi * 446.789634 * tera, '1/s',
                                  'angular frequency of D1 transition of 6Li {Properties of 6Li}']
