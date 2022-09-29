@@ -8,16 +8,7 @@ from scipy import integrate
 import matplotlib.pyplot as plt
 
 
-# ------------------------------- define some beam/gas parameters --------------------------------
-# wavelength = 532*1e-9  #m
-# waist = 117*1e-6  #m
-# T = 1e-3  #K - ARBITRARY RIGHT NOW!
-# hbar = scipy.constants.hbar
-# m = 9.9883414*1e-27  #kg atomic mass
-# density = 1e17 #m^-3  |  1e17 m^-3 = 0.1 µm^-3
-
-
-# ------------------------------- Formulas, CHECK THEORY --------------------------------
+# ------------------------------- Formulas --------------------------------
 
 class ThermalFacts:
     """
@@ -112,9 +103,3 @@ class ThermalFacts:
         :return: scattering rate of thermal movement [1/s]
         """
         return ThermalFacts.v_therm(temperature, mass) * ThermalFacts.cross_section(temperature, mass) * density
-
-# cross_section = 4 * np.pi * (2 * np.pi * hbar / mass / v_therm)**2  # = 4*np.pi*lambda_db^2
-# mean_free_path = 1 / density / cross_section
-# coll_rate = (mean_free_path / v_therm)**-1  # collision rate = (time between two collisions)^-1?
-
-# print("Collision rate =", ThermalFacts.scattering_rate(1e-3, 9.9883414*1e-27, 1e17), "1/s")
