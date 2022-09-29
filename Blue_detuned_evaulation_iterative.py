@@ -16,7 +16,7 @@ uc_colors = {'red': '#C61A27', 'blue': '#3891A6', 'orange': '#F79D65', 'yellow':
 # ------------------------------- Iteration Dependency?  --------------------------------
 
 # Set False for a single run with iterations specified below. Set True for testing the iteration dependency
-iteration_dependency = True
+iteration_dependency = False
 
 # ------------------------------- Experimental parameters  --------------------------------
 
