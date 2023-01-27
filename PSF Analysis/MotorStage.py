@@ -1,5 +1,6 @@
 import time
 import os
+
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import numpy as np
 from simple_pyspin import Camera
@@ -9,41 +10,44 @@ from pylablib.devices import Thorlabs
 
 wavelength = 671e-9  # [m]
 numerical_aperture = 0.656  # Special Optics: 0.656, Mitutoyo: 0.3
-pixel_size = 2.4e-6  # [m], Blackfly: 2.4µm Chameleon: 3.7µm
+pixel_size = 2.4e-6  # [m], Blackfly: 2.4µm Chameleon: 3.75 or 4.8 µm | See Wiki Page for Cameras
 camera_x_pixels, camera_y_pixels = 5472, 3648
 resolution_theo = 0.61 * wavelength / numerical_aperture  # Rayleigh Resolution
 focus_error = 1e-6  # Error of the nanohole position along the optical axis
 focal_length_obj = 18.8e-3  # Focal length of objective
-focal_length_lens = 300e-3  # The lens determining the magnification used to focus light on the camera
-effective_focal_length = ((1 / focal_length_obj + 1 / focal_length_lens) ** (-1))
+focal_length_lens = 300e-3  # The lens determining the magnification and used to focus light onto the camera
+effective_focal_length = 1 / (1 / focal_length_obj + 1 / focal_length_lens)
 magnification = focal_length_lens / focal_length_obj
 magnification_error = effective_focal_length / (effective_focal_length - focal_length_obj) ** 2 * focus_error
 
 # Set the working directory
-working_directory = "files/22072022/4/"
+# Folders that will be created/used in the working directory: "Images", "Results"
+working_directory = "files/"
 
 # Record only a single PSF without stage movement and without writing results in files?
-single_psf = True if input("Record only a single PSF without writing results in files? (y/n)") == "y" else False
+single_psf = True if input("Record only a single PSF (w/o saving the results in txt files)? (y/n)") == "y" else False
 
 # Set False if only the analysis processing should be run
-record_mode = False if input("Only run fitting algorithm without recording? (y/n)") == "y" else True
+record_mode = False if input("Only run the fitting algorithm on previously recorded images (no recording)? (y/n)")\
+                       == "y" else True
 
 # If the data still has to be calculated or can be read from file:
 psf_fitting_true = True if input("Run fitting after recording? (y/n)") == "y" else False
 
-
 if single_psf:
     line_reset_steps = 0
-    matrix = (list(range(0, 8, 4)), list(range(0, 50, 25)))  # Stage won't move, but a single value is still needed
+    image_matrix = (
+        list(range(0, 8, 4)), list(range(0, 50, 25)))  # Single PSF: Stage won't move, but a single value is needed
 else:
-    line_reset_steps = -425  # <----------- SET STEPS THE STAGE TRAVELS BACK TO RESET A ROW ALONG X --------------------
-    matrix = (list(range(0, 3765, 75)),  # X Axis -> Second Value: Max. steps in a row | Third value: no. of images
-              list(range(0, 1385, 35)))  # Y Axis -> Second Value: Max. steps in a line | Third value: no. of images
+    line_reset_steps = -425  # <----------- SET THE STEPS THE STAGE TRAVELS BACK TO RESET A ROW (ALONG X) --------------
+    image_matrix = (
+        list(range(0, 3765, 75)),  # X Axis -> Second Value: Max. steps in a row | Third value: no. of images
+        list(range(0, 1385, 35)))  # Y Axis -> Second Value: Max. steps in a line | Third value: no. of images
 
-steps_x_y = [-1 * np.diff(matrix[0]), np.diff(matrix[1])]  # Array that contains the steps for each loop
+steps_x_y = [-1 * np.diff(image_matrix[0]), np.diff(image_matrix[1])]  # Array that contains the steps for each loop
 number_of_pictures = (len(steps_x_y[0]) * len(steps_x_y[1]))  # Total number of pictures for ets. time calculation
 
-print("Recording matrix: {} x {} steps = {} images"
+print("Recording image matrix: {} x {} steps = {} images"
       .format(len(steps_x_y[0]), len(steps_x_y[1]), number_of_pictures))
 
 imgs = []
@@ -115,10 +119,10 @@ if record_mode:
 
         for j in steps_x_y[0]:
             if first:
-                start_time = time.time()
+                start_time = time.time()  # To calculate the estimated time for the entire recording
             else:
                 # Move X coordinate (j) in every loop but the first
-                stage.move_by(j, channel=1)  # Positive step -> Down
+                stage.move_by(j, channel=1)
                 stage.wait_move()
 
             for k in steps_x_y[1]:
@@ -127,8 +131,7 @@ if record_mode:
                 time.sleep(0.4)  # Wait for stage to stabilize
                 newimage = cam.get_array()
                 img = Image.fromarray(newimage)
-                img.save(working_directory+"Images/PSF_" + str(l_it) + ".bmp")
-                # time.sleep(0.1)  # Wait for image recording
+                img.save(working_directory + "Images/PSF_" + str(l_it) + ".bmp")
 
                 l_it += 1  # Increase number of recorded images by 1
 
@@ -150,7 +153,7 @@ if record_mode:
                 stage.move_by(line_reset_steps, channel=2)
                 stage.wait_move()
 
-            print("Finished row {} of {}.".format(row_it+1, len(steps_x_y[0])+1))
+            print("Finished row {} of {}.".format(row_it + 1, len(steps_x_y[0]) + 1))
 
             row_it += 1
 
@@ -161,7 +164,7 @@ if record_mode:
                 first = False
 
             print("Approx. finish in ~{:.1f}min + {:.0f}min Analysis"
-                  .format((end_time-start_time)*(len(steps_x_y[0])-row_it)/60, 0.008 * number_of_pictures))
+                  .format((end_time - start_time) * (len(steps_x_y[0]) - row_it) / 60, 0.008 * number_of_pictures))
 
         cam.stop()  # stop recording
         stage.close()
@@ -283,7 +286,6 @@ def psf_fitting(directory, px_size, magnification, magnification_err):
 
                     # Throw away bad fits:
                     if 5e-6 > resolution_i > 0.4e-6 and cov is not None:
-
                         # # Plot a single PSF fit for diagnosis
                         # plt.figure(figsize=(8, 2.5))
                         # plt.subplot(1, 3, 1)
@@ -320,13 +322,14 @@ def psf_fitting(directory, px_size, magnification, magnification_err):
 
 
 # %%
-
-
 if psf_fitting_true:
 
     # Fitting:
     all_resolutions, all_resolutions_error, all_coordinates, psf_filenames, psf_angles, psf_x_stddev, psf_y_stddev = \
         psf_fitting(working_directory + "Images", pixel_size, magnification, magnification_error)
+
+    # Convert Coordinates: image plane [px] to object plane [µm] conversion (currently done in the analysis code):
+    # data["all_coordinates"] = data["all_coordinates"] * pixel_size / magnification
 
     if not single_psf:
         # Writing the results in text files:
@@ -338,18 +341,9 @@ if psf_fitting_true:
                 "psf_x_stddev": psf_x_stddev,
                 "psf_y_stddev": psf_y_stddev,
                 }
-        for col_name in data:
-            np.savetxt(working_directory + "Results/{}.txt".format(col_name), data[col_name], fmt='%s')
-
-# else:
-#     # For reading the results from already produced files
-#     data = {}
-#     for filename in sorted(os.listdir(working_directory + "Results")):
-#         if filename.endswith("txt"):
-#             if filename.startswith("psf_filenames"):
-#                 data[filename[:-4]] = np.loadtxt(working_directory + "Results/" + filename, dtype='U')
-#             else:
-#                 data[filename[:-4]] = np.loadtxt(working_directory + "Results/" + filename)
-
-# # Convert Coordinates: image plane [px] to object plane [µm] conversion:
-# data["all_coordinates"] = data["all_coordinates"] * pixel_size / magnification
+        if not os.path.exists(working_directory + "Results/{}.txt".format(data[0])):
+            for col_name in data:
+                np.savetxt(working_directory + "Results/{}.txt".format(col_name), data[col_name], fmt='%s')
+        elif input("Overwrite old results? (y/n)") == "y":
+            for col_name in data:
+                np.savetxt(working_directory + "Results/{}.txt".format(col_name), data[col_name], fmt='%s')
