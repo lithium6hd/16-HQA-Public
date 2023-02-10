@@ -8,6 +8,7 @@ from PIL import Image
 from astropy.modeling import models, fitting
 from pylablib.devices import Thorlabs
 
+# PHYSICAL PARAMETERS
 wavelength = 671e-9  # [m]
 numerical_aperture = 0.656  # Special Optics: 0.656, Mitutoyo: 0.3
 pixel_size = 2.4e-6  # [m], Blackfly: 2.4µm Chameleon: 3.75 or 4.8 µm | See Wiki Page for Cameras
@@ -16,11 +17,13 @@ resolution_theo = 0.61 * wavelength / numerical_aperture  # Rayleigh Resolution
 focus_error = 1e-6  # Error of the nanohole position along the optical axis
 focal_length_obj = 18.8e-3  # Focal length of objective
 focal_length_lens = 300e-3  # The lens determining the magnification and used to focus light onto the camera
+
+# FURTHER CALCULATIONS
 effective_focal_length = 1 / (1 / focal_length_obj + 1 / focal_length_lens)
 magnification = focal_length_lens / focal_length_obj
 magnification_error = effective_focal_length / (effective_focal_length - focal_length_obj) ** 2 * focus_error
 
-# Set the working directory
+# YOUR WORKING DIRECTORY
 # Folders that will be created/used in the working directory: "Images", "Results"
 working_directory = "files/"
 
@@ -28,7 +31,7 @@ working_directory = "files/"
 single_psf = True if input("Record only a single PSF (w/o saving the results in txt files)? (y/n)") == "y" else False
 
 # Set False if only the analysis processing should be run
-record_mode = False if input("Only run the fitting algorithm on previously recorded images (no recording)? (y/n)")\
+record_mode = False if input("Only run the fitting algorithm on previously recorded images (no recording)? (y/n)") \
                        == "y" else True
 
 # If the data still has to be calculated or can be read from file:
@@ -54,12 +57,10 @@ imgs = []
 darks = []
 
 # # %% Testing the camera:
-#
 # with Camera() as cam:
 #     cam.start()  # Start recording
 #     test_images = []
 #
-#     # ------------------------------- Images recording --------------------------------
 #     # input("Press Enter to start image recording...")
 #
 #     # Initialize plot:
@@ -86,12 +87,12 @@ darks = []
 # ------------------------------- RECORDING PART  --------------------------------
 if record_mode:
     with Camera() as cam, Thorlabs.KinesisPiezoMotor("97101928") as stage:
-        # ------------------------------- Dark images recording --------------------------------
 
+        # ------------------------------- Dark images recording --------------------------------
         dark_record = input("Dark image recording? (y/n)")
 
         if dark_record == "y":
-            cam.start()  # Start recording
+            cam.start()
             for i in range(4):
                 darks.append(cam.get_array())
                 time.sleep(0.2)
@@ -99,10 +100,9 @@ if record_mode:
             dark_med = sum(darks) / len(darks)
             dark_med_img = Image.fromarray(dark_med.astype(np.uint8))
             dark_med_img.save("Images/Dark_med.bmp")
-            cam.stop()  # Stop recording
+            cam.stop()
 
-        # ------------------------------- Nanohole Images recording --------------------------------
-
+        # ------------------------------- PSF Images recording --------------------------------
         input("Press Enter to continue with PSF recording...")
 
         stage.enable_channels(1)
@@ -119,7 +119,7 @@ if record_mode:
 
         for j in steps_x_y[0]:
             if first:
-                start_time = time.time()  # To calculate the estimated time for the entire recording
+                start_time = time.time()  # Used to calculate the estimated time for the entire recording
             else:
                 # Move X coordinate (j) in every loop but the first
                 stage.move_by(j, channel=1)
@@ -127,7 +127,7 @@ if record_mode:
 
             for k in steps_x_y[1]:
 
-                # ------------------------------- Record image  --------------------------------
+                # ------------------------------ Read and save the current CCD image -----------------------------
                 time.sleep(0.4)  # Wait for stage to stabilize
                 newimage = cam.get_array()
                 img = Image.fromarray(newimage)
@@ -171,12 +171,12 @@ if record_mode:
 
 
 # %%
-# ------------------------------- PROCESSING PART  --------------------------------
+# ------------------------------- ANALYSIS/FITTING PART  --------------------------------
 
 def psf_fitting(directory, px_size, magnification, magnification_err):
     """
-    Gives two resolutions for a single nanohole image and their coordinates in a list [[x], [y]].
-    The last three return values are only useful if the fit model is gaussian
+    Analysis of nanohole images. Yields resolutions, their coordinates in a list [[x], [y]], and further PSF properties.
+    The last three return values are only useful if the fit model is gaussian.
     :param directory: Directory of image files incl. PSF and Dark pictures [String]
     :param px_size: Pixel size [m]
     :param magnification: Imaging magnification
@@ -200,7 +200,7 @@ def psf_fitting(directory, px_size, magnification, magnification_err):
         # Fit model:
         f_init = models.AiryDisk2D(radius=4.75, fixed={"radius": True}
                                    # bounds={"radius": (4.3, 4.8), "x_0": (10, 11), "y_0": (10, 11)}
-                                   )  #
+                                   )
     else:  # fit_model == "Gaussian":
         f_init = models.Gaussian2D()
 
@@ -286,7 +286,8 @@ def psf_fitting(directory, px_size, magnification, magnification_err):
 
                     # Throw away bad fits:
                     if 5e-6 > resolution_i > 0.4e-6 and cov is not None:
-                        # # Plot a single PSF fit for diagnosis
+
+                        # # DIOAGNOSIS: Plot a single PSF fit
                         # plt.figure(figsize=(8, 2.5))
                         # plt.subplot(1, 3, 1)
                         # plt.imshow(box)
@@ -304,11 +305,11 @@ def psf_fitting(directory, px_size, magnification, magnification_err):
                         # # plt.savefig("Nanohole Fit.png", format="png", dpi=300)
                         # plt.show()
 
-                        # Write results in a list
+                        # Writing results in a list
                         resolutions.append(resolution_i)
                         resolution_errors.append(resolution_error)
 
-                        # Also add the coordinates for each resolution:
+                        # Further data for each PSF:
                         coordinates = np.append(coordinates, [[xc_i], [yc_i]], axis=1)
                         psf_names = np.append(psf_names, filename[:-4])
                         angles = np.append(angles, f.theta)
@@ -324,11 +325,11 @@ def psf_fitting(directory, px_size, magnification, magnification_err):
 # %%
 if psf_fitting_true:
 
-    # Fitting:
+    # Calling the Analysis Function:
     all_resolutions, all_resolutions_error, all_coordinates, psf_filenames, psf_angles, psf_x_stddev, psf_y_stddev = \
         psf_fitting(working_directory + "Images", pixel_size, magnification, magnification_error)
 
-    # Convert Coordinates: image plane [px] to object plane [µm] conversion (currently done in the analysis code):
+    # Uncomment for coordinate conversion image [px] to object [µm] (currently done in the FOV Analysis File):
     # data["all_coordinates"] = data["all_coordinates"] * pixel_size / magnification
 
     if not single_psf:
