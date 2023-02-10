@@ -1,20 +1,16 @@
 import numpy as np
-from numpy.polynomial.polynomial import polyval2d
 import os
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.ticker as ticker
 from matplotlib.colors import ListedColormap, LogNorm
 import plotly.express as px
-from astropy.modeling import models, fitting, polynomial, optimizers
-from scipy.optimize import minimize, fmin
-from chart_studio import plotly
-import plotly.figure_factory as ff
+from astropy.modeling import fitting, polynomial
+from scipy.optimize import minimize
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.tools as tls
 
-# ----------------------------------------------- Color Specification -----------------------------------------------
+
+# --------------------------------------------- Plot Color Specifications ---------------------------------------------
 uc_colors = {'red': '#C61A27', 'blue': '#3891A6', 'orange': '#F79D65', 'yellow': '#FDE74C', 'lightblue': '#C1FFF2',
              'green': '#9BC53D', 'white': '#FFFFFF', 'black': '#000000', 'gray': '#999999'}
 top = cm.get_cmap('Reds', 128 * 4)
@@ -24,27 +20,26 @@ bottom_r = cm.get_cmap('BrBG', 128 * 4)
 newcolors = np.vstack((bottom(np.linspace(0, 0.5, 128 * 4)), top(np.linspace(0, 1, 128 * 4))))
 newcolors_r = np.vstack((top_r(np.linspace(0, 1, 128 * 4)), bottom_r(np.linspace(0.5, 1, 128 * 4))))
 newcmp = ListedColormap(newcolors, name='RedBlueish')
-newcmp_r = ListedColormap(newcolors_r, name='RedBlueish')  # ???
 
 # ----------------------------------------------- Physical Parameters -----------------------------------------------
 wavelength = 671e-9  # [m]
 numerical_aperture = 0.656  # Special Optics: 0.656, Mitutoyo: 0.3
 pixel_size = 2.4e-6  # [m], Blackfly: 2.4µm Chameleon: 3.7µm
 camera_x_pixels, camera_y_pixels = 5472, 3648
-focus_error = 1e-6  # Error of the nanohole position along the optical axis
-focal_length_obj = 18.8e-3  # Focal length of objective
-focal_length_lens = 300e-3  # The lens determining the magnification used to focus light on the camera
-effective_focal_length = ((1 / focal_length_obj + 1 / focal_length_lens) ** (-1))
+focus_error = 1e-6  # [m] Error of the nanohole position along the optical axis
+focal_length_obj = 18.8e-3  # [m] Focal length of objective
+focal_length_lens = 300e-3  # [m] The lens determining the magnification used to focus light on the camera
+effective_focal_length = 1 / (1 / focal_length_obj + 1 / focal_length_lens)
 magnification = focal_length_lens / focal_length_obj
 magnification_error = effective_focal_length / (effective_focal_length - focal_length_obj) ** 2 * focus_error
 resolution_theo = 0.61 * wavelength / numerical_aperture
 tweezer_position = np.array([2757, 1847]) * pixel_size / magnification
 
-# ------------------------------------------------- Image Directory -------------------------------------------------
-working_directory = "files/22072022/4/"
+# ------------------------------------------------- Data Directory -------------------------------------------------
+# Folders required in the working directory: "Images", "Results"
+working_directory = "files/"
 
-# ---------------------------------------------- Reading results files-------------------------------------------------
-
+# ---------------------------------------------- Reading Results Files -----------------------------------------------
 data = {}
 
 for filename in sorted(os.listdir(working_directory + "Results")):
@@ -57,10 +52,7 @@ for filename in sorted(os.listdir(working_directory + "Results")):
 # Coordinates: image plane [px] to object plane [µm] conversion:
 data["all_coordinates"] = data["all_coordinates"] * pixel_size / magnification
 
-# Adjust for hole convolution:
-# data["all_resolutions"] = data["all_resolutions"] * 2.66
-
-# --------------------------------------------- Find best Resolution  ---------------------------------------------
+# ---------------------------------------------- Find Best Resolution  ---------------------------------------------
 rmin, rsecondmin = np.partition(data["all_resolutions"], 1)[0:2]
 
 # Use either rmin or rsecondmin, whichever makes sense
@@ -71,11 +63,10 @@ print("Best Res. Err. ", data["all_resolutions_error"][i])
 print("x" + str(data["all_coordinates"][0][i] * 1e6) + "µm")
 print("y" + str(data["all_coordinates"][1][i] * 1e6) + "µm")
 
-tweezer_position = np.array([2757, 1847]) * pixel_size / magnification
+tweezer_position = np.array([2757, 1847]) * pixel_size / magnification  # Pixel coordinates given by add. measurement...
 tweezer_error = 0.5e-3 / 35e-2 * focal_length_obj  # Beam overlap accuary / distance from objective * focallength => [m]
 
-# ----------------------------------------------------- 2D Fitting ----------------------------------------------------
-
+# --------------------------------------------------- 2D Fitting ----------------------------------------------------
 fit_func = fitting.LinearLSQFitter()
 
 model = polynomial.Polynomial2D(3)
@@ -114,12 +105,15 @@ def fit_poly(x):
 minimum = minimize(fit_poly, x0=[0.0004, 0.0003])
 
 # ---------------------------- Calculate the distance between the optical and mechanical axes -----------------------
+# Distance between the axes intersections in the focal plane
 distance = np.sqrt((tweezer_position[0] - minimum.x[0]) ** 2 + (tweezer_position[1] - minimum.x[1]) ** 2)
 distance_error = abs((tweezer_position[0] - minimum.x[0]) / distance * tweezer_error) \
                  + abs((tweezer_position[1] - minimum.x[1]) / distance * tweezer_error)
+
+# Conversion to the axes' angle difference
 distance_to_angle = np.arctan((distance / focal_length_obj))
 distance_to_angle_error = focal_length_obj / (
-            distance ** 2 + focal_length_obj ** 2) * distance_error  # Deriv.: d/ddist arctan(dist/f)
+        distance ** 2 + focal_length_obj ** 2) * distance_error  # Deriv.: d/ddist arctan(dist/f)
 
 # Test Plot:
 # plt.imshow(polynom2d_third_deg([x_i, y_i],c_values),
@@ -128,8 +122,7 @@ distance_to_angle_error = focal_length_obj / (
 # plt.show()
 
 
-# %% ------------------------------------------- Mean Resolution around Minimum -----------------------------------------
-
+# %% ------------------------------------- Calc. Mean Resolution around Minimum ----------------------------------------
 fov_radius = 100e-6  # [m]
 i, = np.where((data["all_coordinates"][0] < minimum.x + fov_radius) &
               (data["all_coordinates"][0] > minimum.x - fov_radius))
@@ -146,7 +139,6 @@ print("r_mean", resolutions_in_FOV_mean)
 print("error", mean_error)
 
 # %% ---------------------------------------- PLOT FITTED FOV (INTERACTIVE) ----------------------------------------
-
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 plt.rcParams.update({'font.size': 30})
@@ -173,8 +165,8 @@ main_ax.set_ylabel('y Atomplane [µm]', labelpad=15)
 top_ax.set_ylabel('Resolution [µm]', labelpad=15)
 right_ax.set_xlabel('Resolution [µm]', labelpad=15)
 
-coord_conversion_x = (magnification / pixel_size / camera_x_pixels * 500) ** -1
-coord_conversion_y = (magnification / pixel_size / camera_y_pixels * 500) ** -1
+coord_conversion_x = 1 / (magnification / pixel_size / camera_x_pixels * 500)
+coord_conversion_y = 1 / (magnification / pixel_size / camera_y_pixels * 500)
 
 x, y = x_i, y_i
 pos = np.empty(x.shape + (2,))
@@ -258,7 +250,6 @@ fig.canvas.mpl_connect('motion_notify_event', on_move)
 plt.show()
 
 # %% ---------------------------------------- PLOT DATAPOINTS -------------------------------------------------------
-
 plt.rcParams.update({'font.size': 30})
 from matplotlib.colors import Normalize
 
@@ -315,8 +306,6 @@ cax.yaxis.set_label_position('left')
 plt.show()
 
 # %% ---------------------------------------- QUIVER PLOT ----------------------------------------
-
-# Vector Quiver Plot:
 angle_theta = []
 for x, y, theta in zip(data["psf_x_stddev"], data["psf_y_stddev"], data["psf_angles"]):
     if x < y:
@@ -377,7 +366,7 @@ cax.yaxis.tick_left()
 cax.yaxis.set_label_position('left')
 plt.show()
 
-#%% -------------------------------- Calculate Mean PSF Aspect Ratio in FOV --------------------------------------------
+# %% ------------------------------------- Calculate Mean PSF Aspect Ratio in FOV -------------------------------------
 # print(aspect_ratio)
 aspect_in_FOV = np.median(aspect_ratio[k])
 aspect_in_FOV_error = np.std(aspect_ratio[k]) / np.sqrt(len(aspect_ratio[k]))
@@ -385,7 +374,7 @@ aspect_in_FOV_error = np.std(aspect_ratio[k]) / np.sqrt(len(aspect_ratio[k]))
 print("eps_mean", aspect_in_FOV)
 print("eps_mean error", aspect_in_FOV_error)
 
-# ---------------------------------------- PLOTLY FITTED PLOT ----------------------------------------
+# ------------------------------------------------ PLOTLY POLYNOM PLOT -------------------------------------------------
 fit_plot = px.imshow(polynom2d_third_deg([x_i, y_i], c_values), x=x, y=y, range_color=[0.6e-6, 2.4e-6])
 
 fit_plot.update_layout(
@@ -411,7 +400,7 @@ fit_plot.update_layout(
 fit_plot.write_html("FOV_Fit.html", include_plotlyjs="cdn", full_html=False,
                     include_mathjax='cdn')
 
-# %% ---------------------------------------- PLOTLY DATAPOINTS FOV PLOT ----------------------------------------
+# %% ------------------------------------------ PLOTLY DATAPOINTS FOV PLOT ------------------------------------------
 
 x = np.linspace(0, camera_x_pixels * pixel_size / magnification, 500)
 y = np.linspace(0, camera_y_pixels * pixel_size / magnification, 500)
@@ -472,8 +461,7 @@ fig5.update_yaxes(showline=True, linewidth=1, linecolor='grey', gridcolor='light
 fig5.write_html("PSF_FOV_Datapoints.html", include_plotlyjs="cdn", full_html=False,
                 include_mathjax='cdn')
 
-
-# # OLD Interactive PSF 3D Plot:
+# %% ------------------------------------------ OLD Interactive PSF 3D Plot ------------------------------------------
 # fig1 = px.scatter_3d(
 #     data["all_coordinates"], x=data["all_coordinates"][0], y=data["all_coordinates"][1], z=data["all_resolutions"],
 #     #labels={"x":"","y":"","z":""},
