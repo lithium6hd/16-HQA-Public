@@ -1,0 +1,8 @@
+errors are standarddeviations of 5 consecutive measurements to capture measurment noise 
+PoC1 X Position [µm],PoC1 X Position Error [µm], PoC1 Y Position [µm],PoC1 Y Position Error [µm], PoC2 X Position [µm],PoC2 X Position Error [µm], PoC2 Y Position [µm],PoC2 Y Position Error [µm]
+6.06667,1.46969,6.5,0.8,-0.7,3.46945e-15,-1.2,0
+9.26667,3.40588,-1.9,1.72047,1.1,0.4,-3,0.4
+3.26667,1.89737,-1.7,0.8,4.3,0,-0.4,0.4
+-4.93333,1.93907,-3.3,0.748331,-11.5,0.748331,0.6,0.4
+-7.73333,1.09545,-0.3,0.4,7.3,0,3.6,0.4
+-5.93333,1.32665,0.7,0.748331,-0.5,0.4,0.4,0.489898

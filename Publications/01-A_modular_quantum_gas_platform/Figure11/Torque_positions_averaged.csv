@@ -1,0 +1,8 @@
+errors are standarddeviations of 5 consecutive measurements to capture measurment noise 
+Corresponding torque [Nm], Corresponding torque error [Nm],X Position unscrewed [µm], X Position Error unscrewed [µm], Y Position unscrewed [µm], Y Position Error unscrewed [µm],X Position bolted [µm], X Position Error bolted [µm], Y Position bolted [µm], Y Position Error bolted [µm]
+0.6,0.06,2.97045,0.172654,-2.21322,0.233254,6.11449,0.181749,-26.6714,0.148797
+0.9,0.09,8.14629,0.115211,-1.15559,0.183634,7.64557,0.169105,-27.1948,0.298529
+1.2,0.12,19.5625,0.103678,0.506748,0.158896,11.761,0.393171,-26.1713,0.15728
+1.4,0.14,40.3658,0.248925,-2.19128,0.255991,25.4265,0.26149,-24.4529,0.217449
+2,0.2,41.3978,0.152253,-9.10924,0.209034,48.3089,0.238855,-26.4288,0.253547
+3,0.3,44.9568,0.0959933,-31.1807,0.295887,39.9102,0.0443006,-30.5087,0.196069

@@ -1,0 +1,14 @@
+Collimated beam diameter
+8.26mm
+
+Exit angle telescope
+100µm shift: 0.91deg
+200µm shift: 1.83deg
+
+Element, Distance to last telescope lens [mm], smallest usable aperture diameter specification of the component [mm], corresponding FOV in atom plane [µm]
+Mirror, 54, 32, 1366
+Dichroic Mirror D1, 129, 20.1, 289
+Dichroic Mirror D2, 179, 20.1, 208
+Dichroic Mirror D3, 279, 20.1, 134
+Dichroic Mirror D4, 229, 20.1, 163
+Mirror M1, 329, 24.2, 152
